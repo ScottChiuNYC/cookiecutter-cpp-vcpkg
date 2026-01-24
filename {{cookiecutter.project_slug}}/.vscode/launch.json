@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "C++ Launch (Windows)",
+        "type": "cppvsdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/tests/Debug/{{ cookiecutter.project_slug }}_test.exe",
+        "stopAtEntry": false,
+        "preLaunchTask": "CMake: build (Debug)",
+        "cwd": "${workspaceFolder}"
+    }
+    ]
+}
