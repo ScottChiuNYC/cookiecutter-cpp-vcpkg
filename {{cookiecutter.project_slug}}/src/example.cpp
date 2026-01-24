@@ -2,3 +2,7 @@
 
 // Add your library implementation here
 
+std::string HelloWorld() {
+    return "Hello, World!";
+}
+

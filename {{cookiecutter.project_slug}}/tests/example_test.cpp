@@ -17,3 +17,8 @@ protected:
 TEST_F({{ cookiecutter.project_slug | title }}Test, ExampleTest) {
     EXPECT_TRUE(true);
 }
+
+TEST_F({{ cookiecutter.project_slug | title }}Test, HelloWorldTest) {
+    std::string result = HelloWorld();
+    EXPECT_EQ(result, "Hello, World!");
+}
