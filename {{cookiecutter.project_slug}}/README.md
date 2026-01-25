@@ -29,7 +29,7 @@ CMake + vcpkg + GTest
 - Or use `F5` in VS Code (with CMake Tools extension)
 - To add a dependency: `vcpkg add port <package-name>`
 
-## Requirements
+### Requirements
 
 - CMake {{ cookiecutter.cmake_min_version }}+
 - C++ compiler with C++{{ cookiecutter.cpp_standard }} support
