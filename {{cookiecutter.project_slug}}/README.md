@@ -2,22 +2,7 @@
 
 CMake + vcpkg + GTest
 
-## Usage
-
-```
-pip install cookiecutter
-cookiecutter gh:{{ cookiecutter.author_name | lower | replace(' ', '') }}/cookiecutter-vcpkg-cpp
-```
-
-Or with `uv`:
-
-```
-uvx cookiecutter gh:{{ cookiecutter.author_name | lower | replace(' ', '') }}/cookiecutter-vcpkg-cpp
-```
-
-## Development
-
-### One-time setup for vcpkg
+## One-time setup for vcpkg
 
 1. Clone vcpkg:
    ```
@@ -36,6 +21,8 @@ uvx cookiecutter gh:{{ cookiecutter.author_name | lower | replace(' ', '') }}/co
    vcpkg new --application
    ```
 
+## Developer Guide
+
 ### Building and Testing
 
 - Run `cnb.bat` to configure, build, and run tests
@@ -47,4 +34,4 @@ uvx cookiecutter gh:{{ cookiecutter.author_name | lower | replace(' ', '') }}/co
 - CMake {{ cookiecutter.cmake_min_version }}+
 - C++ compiler with C++{{ cookiecutter.cpp_standard }} support
 - vcpkg
-- Windows (for batch scripts)
+- Windows if you wnant to run batch scripts
