@@ -1,5 +1,11 @@
-cmake --preset=vcpkg
-@REM cmake --build build --config Release
-@REM .\build\tests\Release\{{ cookiecutter.project_slug }}_test.exe
-cmake --build build --config Debug
-.\build\tests\Debug\{{ cookiecutter.project_slug }}_test.exe
+@echo off
+setlocal
+
+cmake --preset windows-vcpkg
+if errorlevel 1 exit /b %errorlevel%
+
+cmake --build --preset windows-debug
+if errorlevel 1 exit /b %errorlevel%
+
+ctest --preset windows-debug-tests
+exit /b %errorlevel%
