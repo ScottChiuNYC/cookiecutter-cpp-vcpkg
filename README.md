@@ -1,26 +1,21 @@
 # Cookiecutter vcpkg C++ Library
 
-A cookiecutter template for creating pure C++ libraries with vcpkg and CMake.
+A cross-platform cookiecutter template for pure C++ libraries using CMake, vcpkg, and GoogleTest.
 
-## Features
+## Generated project features
 
-- **CMake** - Modern C++ build system
-- **vcpkg** - Cross-platform C++ package manager
-- **Google Test (GTest)** - Unit testing framework
-- **VS Code Integration** - Ready for VS Code with CMake Tools
-- **Windows Batch Scripts** - Quick build and git push helpers
+- C++17 static and shared libraries by default;
+- example and GoogleTest targets;
+- Windows Visual Studio 2022 and Linux Ninja presets;
+- generated Windows/Linux GitHub Actions build-and-test workflow;
+- Microsoft vcpkg as the default registry;
+- `gtest` routed to `ScottChiuNYC/vcpkg-registry` so it does not acquire `pkgconf`;
+- VS Code tasks and Windows batch helpers aligned with the preset layout.
 
 ## Usage
 
-### Installation
-
 ```bash
 pip install cookiecutter
-```
-
-### Create a new C++ library
-
-```bash
 cookiecutter gh:scottchiunyc/cookiecutter-cpp-vcpkg
 ```
 
@@ -30,112 +25,61 @@ Or with `uv`:
 uvx cookiecutter gh:scottchiunyc/cookiecutter-cpp-vcpkg
 ```
 
-### Answer the prompts
+The default prompts include the project name and slug, description, author details, C++ standard, and minimum CMake version. The default CMake requirement is 3.23 because the generated project uses CMake Presets schema version 6.
 
-- `project_name`: Name of your library (e.g., "My Cool Library")
-- `project_slug`: Lowercase underscore-separated identifier (auto-generated)
-- `project_description`: Short description
-- `author_name`: Your name
-- `author_email`: Your email
-- `cpp_standard`: C++ standard version (default: 17)
-- `cmake_min_version`: Minimum CMake version (default: 3.15)
+## Generated build commands
 
-## Project Structure
+### Windows
 
-```
-my_project/
-├── src/                    # Library source files
-│   ├── CMakeLists.txt     # Library build configuration
-│   ├── example.cpp
-│   └── ...
-├── include/
-│   └── my_project/        # Public headers
-│       ├── example.h
-│       └── ...
-├── tests/                 # Unit tests
-│   ├── CMakeLists.txt
-│   ├── example_test.cpp
-│   └── ...
-├── examples/              # Example programs
-│   ├── CMakeLists.txt
-│   ├── demo.cpp
-│   └── ...
-├── .vscode/               # VS Code configuration
-├── CMakeLists.txt         # Root CMake configuration
-├── CMakePresets.json      # CMake presets
-├── vcpkg.json             # vcpkg dependencies
-├── vcpkg-configuration.json
-├── cnb.bat                # Build and test script
-├── cnp.bat                # Git push script
-├── LICENSE
-└── README.md
+```powershell
+cmake --preset windows-vcpkg
+cmake --build --preset windows-release
+ctest --preset windows-release-tests
 ```
 
-## Getting Started
+### Linux
 
-1. **Initialize vcpkg** (one-time):
-   ```bash
-   git clone https://github.com/microsoft/vcpkg.git
-   cd vcpkg && .\bootstrap-vcpkg.bat
-   set "VCPKG_ROOT=C:\path\to\vcpkg"
-   set PATH=%VCPKG_ROOT%;%PATH%
-   ```
+```bash
+cmake --preset linux-vcpkg-release
+cmake --build --preset linux-release
+ctest --preset linux-release-tests
+```
 
-2. **Initialize in project**:
-   ```bash
-   vcpkg new --application
-   ```
+`VCPKG_ROOT` must reference a bootstrapped vcpkg checkout. The generated workflow reads `default-registry.baseline` from `vcpkg-configuration.json` before checking out vcpkg, so the tool and registry baseline remain aligned.
 
-3. **Build**:
-   ```bash
-   .\cnb.bat  # Windows
-   ```
+## Registry policy
 
-4. **In VS Code**:
-   - Press `F5` to build and debug
-   - CMake Tools extension is recommended
+Generated projects use two registries:
 
-## Adding Dependencies
+- `gtest` is resolved from `ScottChiuNYC/vcpkg-registry` at baseline `9e60f2f4c449410bf3b8ccd8fa11b1f3c38cf0f0`;
+- all package names not explicitly assigned to that registry are resolved from Microsoft vcpkg.
+
+The custom GoogleTest port retains the official package behavior but uses `vcpkg_fixup_pkgconfig(SKIP_CHECK)`, preventing vcpkg from acquiring or executing `pkgconf`.
+
+## Template acceptance testing
+
+`.github/workflows/template-acceptance.yml` generates a fresh `ci_sample` project independently on Windows and Linux, then:
+
+1. verifies that Cookiecutter/Jinja rendered the generated workflow correctly;
+2. verifies the exact custom-registry routing and pinned baselines;
+3. configures the generated project through vcpkg;
+4. confirms that `pkgconf` was neither installed nor acquired;
+5. builds the static library, shared library, examples, and tests;
+6. runs CTest.
+
+This validates the template itself rather than relying on one previously generated repository.
+
+## Adding dependencies
+
+Inside a generated project:
 
 ```bash
 vcpkg add port fmt
 vcpkg add port spdlog
 ```
 
-This automatically updates `vcpkg.json` and downloads dependencies.
-
-## Building
-
-- **Debug**: `cmake --build build --config Debug`
-- **Release**: `cmake --build build --config Release`
-- **Quick build & test**: `cnb.bat`
-
-## Running Tests
-
-```bash
-.\build\tests\Debug\my_project_test.exe
-```
-
-Or with CTest:
-
-```bash
-cd build
-ctest --output-on-failure
-```
-
-## Notes
-
-- Targets are named after `project_slug` (e.g., `my_project`)
-- Static library: `my_project`
-- Shared library: `my_project_shared`
-- Test executable: `my_project_test`
-- Each subdirectory (`src`, `tests`, `examples`) has its own `CMakeLists.txt`
+Additional packages use the Microsoft default registry unless their names are explicitly assigned to another registry in `vcpkg-configuration.json`.
 
 ## License
 
 This cookiecutter template is MIT licensed.
-
-## Author
-
-{{ cookiecutter.author_name }}
-

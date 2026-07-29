@@ -1,0 +1,114 @@
+name: Build and Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/build-and-test.yml'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'cnb.bat'
+      - 'vcpkg.json'
+      - 'vcpkg-configuration.json'
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'examples/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-test-{% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+env:
+  VCPKG_ROOT: {% raw %}${{ github.workspace }}{% endraw %}/vcpkg
+  VCPKG_DISABLE_METRICS: 1
+
+jobs:
+  build-and-test:
+    name: {% raw %}${{ matrix.name }}{% endraw %}
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            configure_preset: linux-vcpkg-release
+            build_preset: linux-release
+            test_preset: linux-release-tests
+          - name: Windows
+            os: windows-2022
+            configure_preset: windows-vcpkg
+            build_preset: windows-release
+            test_preset: windows-release-tests
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read vcpkg baseline
+        id: vcpkg-baseline
+        shell: pwsh
+        run: |
+          $configuration = Get-Content vcpkg-configuration.json | ConvertFrom-Json
+          "sha=$($configuration.'default-registry'.baseline)" >> $env:GITHUB_OUTPUT
+
+      - name: Check out pinned vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: {% raw %}${{ steps.vcpkg-baseline.outputs.sha }}{% endraw %}
+          path: vcpkg
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Bootstrap vcpkg on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Bootstrap vcpkg on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Configure CMake
+        run: cmake --preset "{% raw %}${{ matrix.configure_preset }}{% endraw %}"
+
+      - name: Verify pkgconf was neither installed nor acquired
+        shell: pwsh
+        run: |
+          $installed = @(
+            Get-ChildItem -Path build -Recurse -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.Name -like 'pkgconf_*' -and
+                $_.FullName -match 'vcpkg_installed[\\/]vcpkg[\\/]info'
+              }
+          )
+
+          $downloads = Join-Path $env:VCPKG_ROOT 'downloads'
+          $acquired = @()
+          foreach ($directory in @($downloads, (Join-Path $downloads 'tools'))) {
+            if (Test-Path $directory) {
+              $acquired += Get-ChildItem -Path $directory -ErrorAction SilentlyContinue |
+                Where-Object {
+                  $_.Name.ToLowerInvariant() -eq 'pkgconf' -or
+                  $_.Name.ToLowerInvariant().StartsWith('pkgconf-')
+                }
+            }
+          }
+
+          if ($installed.Count -gt 0 -or $acquired.Count -gt 0) {
+            throw "pkgconf unexpectedly present; installed=$installed acquired=$acquired"
+          }
+
+          Write-Host 'Confirmed: custom gtest was configured without installing or acquiring pkgconf.'
+
+      - name: Build library, tests, and examples
+        run: cmake --build --preset "{% raw %}${{ matrix.build_preset }}{% endraw %}"
+
+      - name: Run CTest
+        run: ctest --preset "{% raw %}${{ matrix.test_preset }}{% endraw %}"

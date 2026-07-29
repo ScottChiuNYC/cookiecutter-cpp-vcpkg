@@ -1,0 +1,157 @@
+name: Template Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DISABLE_METRICS: 1
+  GENERATED_PROJECT: ci_sample
+
+jobs:
+  generate-build-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            configure_preset: linux-vcpkg-release
+            build_preset: linux-release
+            test_preset: linux-release-tests
+          - name: Windows
+            os: windows-2022
+            configure_preset: windows-vcpkg
+            build_preset: windows-release
+            test_preset: windows-release-tests
+
+    steps:
+      - name: Check out cookiecutter
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Cookiecutter
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cookiecutter
+
+      - name: Generate sample project
+        run: >-
+          cookiecutter --no-input .
+          project_name=ci_sample
+          project_slug=ci_sample
+
+      - name: Verify rendered project
+        id: vcpkg-baseline
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          project = Path(os.environ["GENERATED_PROJECT"])
+          workflow = (project / ".github/workflows/build-and-test.yml").read_text(
+              encoding="utf-8"
+          )
+          github_matrix_expression = "$" + "{{ matrix.os }}"
+          assert "{%" not in workflow
+          assert "cookiecutter." not in workflow
+          assert github_matrix_expression in workflow
+          assert "Verify pkgconf was neither installed nor acquired" in workflow
+
+          configuration = json.loads(
+              (project / "vcpkg-configuration.json").read_text(encoding="utf-8")
+          )
+          assert configuration["default-registry"] == {
+              "kind": "git",
+              "baseline": "00807e89724847a866033a2f042c38fafae3c534",
+              "repository": "https://github.com/microsoft/vcpkg",
+          }
+
+          custom = next(
+              registry
+              for registry in configuration["registries"]
+              if registry.get("repository")
+              == "https://github.com/ScottChiuNYC/vcpkg-registry"
+          )
+          assert custom["baseline"] == "9e60f2f4c449410bf3b8ccd8fa11b1f3c38cf0f0"
+          assert custom["packages"] == ["gtest"]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"sha={configuration['default-registry']['baseline']}\n")
+
+      - name: Check out pinned vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ steps.vcpkg-baseline.outputs.sha }}
+          path: vcpkg
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Bootstrap vcpkg on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Bootstrap vcpkg on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Configure generated project
+        working-directory: ci_sample
+        run: cmake --preset "${{ matrix.configure_preset }}"
+
+      - name: Verify pkgconf was neither installed nor acquired
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+
+          project = Path(os.environ["GENERATED_PROJECT"])
+          installed = sorted(
+              project.glob("build/*/vcpkg_installed/vcpkg/info/pkgconf_*")
+          )
+
+          downloads = Path(os.environ["VCPKG_ROOT"]) / "downloads"
+          acquired = []
+          for directory in (downloads, downloads / "tools"):
+              if not directory.exists():
+                  continue
+              acquired.extend(
+                  path
+                  for path in directory.iterdir()
+                  if path.name.lower() == "pkgconf"
+                  or path.name.lower().startswith("pkgconf-")
+              )
+          acquired = sorted(acquired)
+
+          if installed or acquired:
+              raise SystemExit(
+                  f"pkgconf unexpectedly present; installed={installed}, acquired={acquired}"
+              )
+
+          print("Confirmed: generated project used custom gtest without pkgconf.")
+
+      - name: Build generated library, tests, and examples
+        working-directory: ci_sample
+        run: cmake --build --preset "${{ matrix.build_preset }}"
+
+      - name: Run generated CTest suite
+        working-directory: ci_sample
+        run: ctest --preset "${{ matrix.test_preset }}"
