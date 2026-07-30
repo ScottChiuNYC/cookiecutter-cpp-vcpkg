@@ -27,20 +27,17 @@ cmake --build --preset linux-release
 ctest --preset linux-release-tests
 ```
 
-## Dependencies and registries
+## Dependencies and overlay ports
 
-`vcpkg.json` declares project dependencies. The generated `vcpkg-configuration.json` uses:
+`vcpkg.json` declares project dependencies. The generated `vcpkg-configuration.json` uses Microsoft vcpkg as the only package registry and declares the repository-local `vcpkg-ports` directory as an overlay.
 
-- `ScottChiuNYC/vcpkg-registry` for `gtest`;
-- Microsoft vcpkg as the default registry for all other package names.
+The `gtest` dependency is resolved from `vcpkg-ports/gtest` before registry lookup. This local port preserves the official GoogleTest build and standard `GTest::*` CMake targets, but configures pkg-config metadata with `SKIP_CHECK`, so vcpkg does not acquire or execute `pkgconf`.
 
-The custom `gtest` port preserves the official GoogleTest build and CMake targets, but configures pkg-config metadata with `SKIP_CHECK`, so vcpkg does not acquire or execute `pkgconf`.
-
-When the custom registry publishes a new baseline, update the custom registry `baseline` in `vcpkg-configuration.json`. The Microsoft vcpkg checkout remains pinned by the separate `default-registry.baseline`.
+No personal vcpkg registry is required. When the custom recipe changes, update the files under `vcpkg-ports/gtest` and validate the project on Windows and Linux. All other package names continue to resolve from the Microsoft default registry.
 
 ## Continuous integration
 
-`.github/workflows/build-and-test.yml` builds the library, examples, and tests on Windows and Linux, confirms that `pkgconf` was neither installed nor acquired, and runs CTest.
+`.github/workflows/build-and-test.yml` builds the library, examples, and tests on Windows and Linux, confirms that `pkgconf` was neither installed nor acquired, and runs CTest. Changes under `vcpkg-ports` also trigger the workflow.
 
 To add another dependency:
 
@@ -48,4 +45,4 @@ To add another dependency:
 vcpkg add port <package-name>
 ```
 
-Unless that package is explicitly listed under a custom registry's `packages`, it is resolved from the Microsoft default registry.
+The package resolves from Microsoft vcpkg unless a same-named local port exists under `vcpkg-ports`.
