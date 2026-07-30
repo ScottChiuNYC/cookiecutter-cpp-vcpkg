@@ -10,6 +10,7 @@ on:
       - 'cnb.bat'
       - 'vcpkg.json'
       - 'vcpkg-configuration.json'
+      - 'vcpkg-ports/**'
       - 'src/**'
       - 'include/**'
       - 'tests/**'
@@ -105,7 +106,7 @@ jobs:
             throw "pkgconf unexpectedly present; installed=$installed acquired=$acquired"
           }
 
-          Write-Host 'Confirmed: custom gtest was configured without installing or acquiring pkgconf.'
+          Write-Host 'Confirmed: the local gtest overlay was configured without pkgconf.'
 
       - name: Build library, tests, and examples
         run: cmake --build --preset "{% raw %}${{ matrix.build_preset }}{% endraw %}"
