@@ -17,8 +17,9 @@ msg = textwrap.dedent(
       4) Run tests: ctest --preset linux-release-tests
 
     Dependencies:
-      - gtest is resolved from ScottChiuNYC/vcpkg-registry so it does not acquire pkgconf.
-      - all other packages continue to use the Microsoft vcpkg registry by default.
+      - gtest is resolved from the repository-local vcpkg-ports/gtest overlay.
+      - the overlay skips pkgconf acquisition.
+      - all other packages continue to use the Microsoft vcpkg registry.
 
     Requirements:
       - CMake {{ cookiecutter.cmake_min_version }}+
