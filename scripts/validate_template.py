@@ -107,8 +107,9 @@ def main():
     result = subprocess.run([str(x) for x in [*copier, "copy", "--defaults", *bad, fixture, work / "invalid"]], env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     assert result.returncode != 0 and "Use a valid identifier." in result.stdout, result.stdout
     print(f"Identifier rejection passed (expected exit {result.returncode}).", flush=True)
-    result = subprocess.run([str(x) for x in [*copier, "copy", "--defaults", "-d", "version=1.2.3-beta", fixture, work / "invalid-version"]], env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    assert result.returncode != 0 and "Use a numeric CMake version" in result.stdout, result.stdout
+    for invalid_version in ("1.2.3-beta", "01.2.3"):
+        result = subprocess.run([str(x) for x in [*copier, "copy", "--defaults", "-d", f"version={invalid_version}", fixture, work / "invalid-version"]], env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        assert result.returncode != 0 and "Use a numeric CMake version" in result.stdout, result.stdout
     print("Invalid CMake version rejected before generation.", flush=True)
     # Use the generated project's own tools and the workflow's original Python/PATH.
     runner = os.environ.get("TEMPLATE_RUNNER_PYTHON", sys.executable)

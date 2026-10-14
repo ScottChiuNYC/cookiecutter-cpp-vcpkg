@@ -16,7 +16,7 @@ version:
   type: str
   default: "0.1.0"
   validator: >-
-    {% if not (version | regex_search("^[0-9]+(\\.[0-9]+){2}$")) %}Use a numeric CMake version (major.minor.patch).{% endif %}
+    {% if not (version | regex_search("^(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){2}$")) %}Use a numeric CMake version (major.minor.patch without leading zeroes).{% endif %}
 vcpkg_port_name:
   type: str
   default: "{{ project_slug.replace('_', '-').strip('-') }}"
