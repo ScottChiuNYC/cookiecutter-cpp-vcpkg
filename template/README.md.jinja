@@ -29,7 +29,7 @@ No personal vcpkg registry is required. When the custom recipe changes, update t
 
 ## Continuous integration
 
-`.github/workflows/build-and-test.yml` builds the library, examples, and tests on Windows and Linux, confirms that `pkgconf` was neither installed nor acquired, and runs CTest. Changes under `vcpkg-ports` also trigger the workflow.
+Pushing this project to GitHub automatically runs `.github/workflows/build-and-test.yml` on Windows and Linux. Pull requests and manual runs also trigger it. The workflow invokes `python scripts/bootstrap.py` and `python scripts/validate.py`; those scripts build the libraries, examples and tests, check that `pkgconf` was neither installed nor acquired, and run CTest.
 
 To add another dependency:
 

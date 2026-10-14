@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +27,7 @@ jobs:
           path: |
             ~/.cache/vcpkg/archives
             ~/AppData/Local/vcpkg/archives
-          key: vcpkg-{% raw %}${{ runner.os }}{% endraw %}-{% raw %}${{ hashFiles('vcpkg-configuration.json', 'vcpkg-ports/**', 'scripts/tool-requirements.txt') }}{% endraw %}
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg-configuration.json', 'vcpkg-ports/**', 'scripts/tool-requirements.txt') }}
       - name: Bootstrap pinned tools and vcpkg
         run: python scripts/bootstrap.py
       - name: Validate
