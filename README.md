@@ -1,82 +1,47 @@
-# Cookiecutter vcpkg C++ Library
+# Copier C++ vcpkg Library
 
-A cross-platform cookiecutter template for pure C++ libraries using CMake, vcpkg, and GoogleTest.
+A pure C++17 library with independent static/shared targets, CMake, vcpkg and GoogleTest. This repository is migrated in place from Cookiecutter; its GitHub name stays the same.
 
-## Generated project features
-
-- C++17 static and shared libraries by default;
-- example and GoogleTest targets;
-- Windows Visual Studio 2022 and Linux Ninja presets;
-- generated Windows/Linux GitHub Actions build-and-test workflow;
-- Microsoft vcpkg as the only package registry;
-- a repository-local `gtest` overlay port that does not acquire `pkgconf`;
-- VS Code tasks and Windows batch helpers aligned with the preset layout.
-
-## Usage
+## Generate and update a project
 
 ```bash
-pip install cookiecutter
-cookiecutter gh:scottchiunyc/cookiecutter-cpp-vcpkg
+pip install copier==9.19.1
+copier copy gh:ScottChiuNYC/cookiecutter-cpp-vcpkg my-project
+cd my-project
+git init
+git add .
+git commit -m "Generate project"
+# After committing your project changes, update to the latest template revision:
+copier update
 ```
 
-Or with `uv`:
+Copier records answers and the template version in `.copier-answers.yml`; commit it. Release versions are Git tags. The template lives under `template/`, so template metadata and its Git history are not copied into generated projects. Existing Cookiecutter-generated projects need deliberate adoption and review before using Copier updates; this migration does not rewrite those projects.
+
+## Fresh Work / Codex / developer setup
+
+Prerequisites: Python 3.12+, Git, and a C++17 compiler. Linux needs GCC or Clang plus curl, zip, unzip and tar. Windows needs Visual Studio 2022 with Desktop development with C++ and a Windows SDK (the `windows-2022` Actions image supplies them). Native compilers are platform prerequisites, not installed by pip.
+
+From a fresh clone, on either Windows or Linux:
 
 ```bash
-uvx cookiecutter gh:scottchiunyc/cookiecutter-cpp-vcpkg
+python scripts/bootstrap.py
+python scripts/validate_template.py
 ```
 
-The default prompts include the project name and slug, description, author details, C++ standard, and minimum CMake version. The default CMake requirement is 3.23 because the generated project uses CMake Presets schema version 6.
+Bootstrap installs the exact tool versions in `template/scripts/tool-requirements.txt` into `.dev-tools/venv`, checks out the vcpkg baseline declared in `template/vcpkg-configuration.json`, and bootstraps it. Validation needs no activation, manual PATH changes, or exported variables. Both platforms supply the installed Ninja path to nested vcpkg processes; Linux also pins the parent configure path. Compiler tracking stays enabled, and Windows retains the Visual Studio preset.
 
-## Generated build commands
-
-### Windows
-
-```powershell
-cmake --preset windows-vcpkg
-cmake --build --preset windows-release
-ctest --preset windows-release-tests
-```
-
-### Linux
+To reuse an already pinned vcpkg checkout:
 
 ```bash
-cmake --preset linux-vcpkg-release
-cmake --build --preset linux-release
-ctest --preset linux-release-tests
+python scripts/bootstrap.py --vcpkg-root /absolute/path/to/vcpkg
 ```
 
-`VCPKG_ROOT` must reference a bootstrapped vcpkg checkout. The generated workflow reads `default-registry.baseline` from `vcpkg-configuration.json` before checking out vcpkg, so the tool and registry baseline remain aligned.
+That checkout must already match the declared baseline and is not checked out to another version. Re-running bootstrap reuses installed tools and downloads. Use `--work-dir .validation` on validation to keep generated artifacts; that directory must be empty. The two repositories maintain their own scripts and their independent project architectures.
 
-## Dependency policy
+## Validation and CI
 
-Generated projects use Microsoft vcpkg as their only package registry. `vcpkg-configuration.json` declares `vcpkg-ports` as a repository-local overlay, so `gtest` is resolved from `vcpkg-ports/gtest` before any registry lookup. All other packages are resolved from Microsoft vcpkg.
+The validation script exercises default/custom Copier copy, real `v1.0.0` → `v1.1.0` updates in an isolated fixture, preservation of local README edits, answer/version persistence, identifier rejection and GitHub expression rendering. It then configures/builds the updated sample and runs its original tests. The static and shared libraries, example and GoogleTest executable are all built.
 
-The local GoogleTest port retains the official package behavior but uses `vcpkg_fixup_pkgconfig(SKIP_CHECK)`, preventing vcpkg from acquiring or executing `pkgconf`. Generated projects contain no personal registry URL.
+`.github/workflows/template-acceptance.yml` runs these same two commands on Linux and Windows. Generated projects include their own bootstrap/validation scripts and a Windows/Linux workflow using those scripts. The vcpkg GoogleTest overlay remains local and validation checks that `pkgconf` was not installed or acquired.
 
-## Template acceptance testing
-
-`.github/workflows/template-acceptance.yml` generates a fresh `ci_sample` project independently on Windows and Linux, then:
-
-1. verifies that Cookiecutter/Jinja rendered the generated workflow correctly;
-2. verifies the local overlay recipe and confirms no personal registry is configured;
-3. configures the generated project through the pinned Microsoft vcpkg checkout;
-4. confirms that `pkgconf` was neither installed nor acquired;
-5. builds the static library, shared library, examples, and tests;
-6. runs CTest.
-
-This validates the template itself rather than relying on one previously generated repository.
-
-## Adding dependencies
-
-Inside a generated project:
-
-```bash
-vcpkg add port fmt
-vcpkg add port spdlog
-```
-
-Additional packages use the Microsoft default registry. To customize another package, add a repository-local port under `vcpkg-ports`.
-
-## License
-
-This cookiecutter template is MIT licensed.
+No Docker, services, shell activation, personal vcpkg registry or custom infrastructure is needed. The first run downloads tools and compiles dependencies; later runs reuse local caches. Template acceptance on push allows Windows/Linux checks to finish before opening the migration PR.

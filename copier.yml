@@ -1,0 +1,26 @@
+_min_copier_version: "9.19.1"
+_subdirectory: template
+
+project_name:
+  type: str
+  default: "my_project"
+project_slug:
+  type: str
+  default: "{{ project_name.lower().replace(' ', '_').replace('-', '_') }}"
+  validator: >-
+    {% if not (project_slug | regex_search("^[a-z_][a-z0-9_]*$")) %}Use a valid identifier.{% endif %}
+project_description:
+  type: str
+  default: "A vcpkg C++ library"
+author_name:
+  type: str
+  default: "Your Name"
+author_email:
+  type: str
+  default: "your.email@example.com"
+cpp_standard:
+  type: str
+  default: "17"
+cmake_min_version:
+  type: str
+  default: "3.25"
