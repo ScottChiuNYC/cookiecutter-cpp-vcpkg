@@ -80,6 +80,9 @@ def main():
     assert "vcpkg_fixup_pkgconfig(SKIP_CHECK)" in (project / "vcpkg-ports/gtest/portfile.cmake").read_text(encoding="utf-8")
     assert not (project / ".git").exists() and not (project / "copier.yml").exists()
     readme = project / "README.md"
+    documented = readme.read_text(encoding="utf-8")
+    assert "-DVCPKG_TARGET_TRIPLET=x64-linux" in documented
+    assert "-DVCPKG_TARGET_TRIPLET=x64-windows" in documented
     readme.write_text(readme.read_text(encoding="utf-8") + "\nLocal project note.\n", encoding="utf-8", newline="\n")
     run(["git", "init"], cwd=project)
     for key, value in (("user.name", "Template Validation"), ("user.email", "template@example.com"), ("core.autocrlf", "false")):
@@ -104,6 +107,9 @@ def main():
     result = subprocess.run([str(x) for x in [*copier, "copy", "--defaults", *bad, fixture, work / "invalid"]], env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     assert result.returncode != 0 and "Use a valid identifier." in result.stdout, result.stdout
     print(f"Identifier rejection passed (expected exit {result.returncode}).", flush=True)
+    result = subprocess.run([str(x) for x in [*copier, "copy", "--defaults", "-d", "version=1.2.3-beta", fixture, work / "invalid-version"]], env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    assert result.returncode != 0 and "Use a numeric CMake version" in result.stdout, result.stdout
+    print("Invalid CMake version rejected before generation.", flush=True)
     # Use the generated project's own tools and the workflow's original Python/PATH.
     runner = os.environ.get("TEMPLATE_RUNNER_PYTHON", sys.executable)
     project_env = os.environ.copy()
