@@ -1,0 +1,21 @@
+find_package(GTest CONFIG REQUIRED)
+
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS *.cpp)
+add_executable({{ project_slug }}_test ${TEST_SOURCES})
+
+target_include_directories(
+    {{ project_slug }}_test
+    PRIVATE ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+    {{ project_slug }}_test
+    PRIVATE
+        {{ project_slug }}
+        GTest::gtest_main
+)
+
+add_test(
+    NAME {{ project_slug }}_test
+    COMMAND {{ project_slug }}_test
+)

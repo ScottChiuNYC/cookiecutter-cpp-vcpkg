@@ -1,10 +1,10 @@
-# {{ cookiecutter.project_name }}
+# {{ project_name }}
 
-A cross-platform C++{{ cookiecutter.cpp_standard }} library using CMake, vcpkg, and GoogleTest.
+A cross-platform C++{{ cpp_standard }} library using CMake, vcpkg, and GoogleTest.
 
 ## Requirements
 
-- CMake {{ cookiecutter.cmake_min_version }}+
+- CMake {{ cmake_min_version }}+
 - a vcpkg checkout referenced by `VCPKG_ROOT`
 - Visual Studio 2022 on Windows
 - Ninja and a compatible C++ compiler on Linux
@@ -46,3 +46,14 @@ vcpkg add port <package-name>
 ```
 
 The package resolves from Microsoft vcpkg unless a same-named local port exists under `vcpkg-ports`.
+
+## Reproducible setup and validation
+
+```bash
+python scripts/bootstrap.py
+python scripts/validate.py
+```
+
+Requires Python 3.12+, Git and a platform C++17 toolchain (GCC/Clang on Linux; Visual Studio 2022 C++ tools on Windows). The scripts install pinned tools and the declared vcpkg baseline in `.dev-tools`, then use the canonical presets. No shell activation or manual Ninja path debugging is required. Linux forwards the installed Ninja path into vcpkg compiler detection; compiler tracking remains enabled.
+
+Commit `.copier-answers.yml` and project changes before `copier update --vcs-ref <template-tag>`. Template Git tags version updates independently of your project's version.

@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION {{ cookiecutter.cmake_min_version }})
-project({{ cookiecutter.project_slug }} LANGUAGES CXX)
+cmake_minimum_required(VERSION {{ cmake_min_version }})
+project({{ project_slug }} LANGUAGES CXX)
 
 include(CTest)
 
 option(BUILD_EXAMPLES "Build example programs" ON)
 
-set(CMAKE_CXX_STANDARD {{ cookiecutter.cpp_standard }})
+set(CMAKE_CXX_STANDARD {{ cpp_standard }})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
