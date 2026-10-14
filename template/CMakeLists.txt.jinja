@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION {{ cmake_min_version }})
-project({{ project_slug }} LANGUAGES CXX)
+project({{ project_slug }} VERSION {{ version }} LANGUAGES CXX)
 
 include(CTest)
 
 option(BUILD_EXAMPLES "Build example programs" ON)
+option(BUILD_STATIC_LIBRARY "Build the independent static library" ON)
+option(BUILD_SHARED_LIBRARY "Build the independent shared library" ON)
 
 set(CMAKE_CXX_STANDARD {{ cpp_standard }})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

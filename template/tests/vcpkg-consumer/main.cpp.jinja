@@ -1,0 +1,8 @@
+#include "{{ project_slug }}/example.h"
+#include <iostream>
+
+int main() {
+    const auto message = HelloWorld();
+    std::cout << message << std::endl;
+    return message == "Hello, World!" ? 0 : 1;
+}
