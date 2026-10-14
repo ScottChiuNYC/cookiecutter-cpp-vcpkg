@@ -2,30 +2,22 @@
 
 A cross-platform C++{{ cpp_standard }} library using CMake, vcpkg, and GoogleTest.
 
-## Requirements
+## Reproducible setup and validation
 
-- CMake {{ cmake_min_version }}+
-- a vcpkg checkout referenced by `VCPKG_ROOT`
-- Visual Studio 2022 on Windows
-- Ninja and a compatible C++ compiler on Linux
-
-## Windows
-
-```powershell
-cmake --preset windows-vcpkg
-cmake --build --preset windows-release
-ctest --preset windows-release-tests
-```
-
-For a Debug developer build, `cnb.bat` configures, builds, and runs CTest.
-
-## Linux
+From a fresh checkout:
 
 ```bash
-cmake --preset linux-vcpkg-release
-cmake --build --preset linux-release
-ctest --preset linux-release-tests
+python scripts/bootstrap.py
+python scripts/validate.py
 ```
+
+Requires Python 3.12+, Git and a platform C++17 toolchain (GCC/Clang on Linux; Visual Studio 2022 C++ tools and a Windows SDK on Windows). Linux also needs curl, zip, unzip and tar. Bootstrap installs pinned tools and the declared vcpkg baseline in `.dev-tools`. Validation configures, builds the static/shared libraries and example, and runs CTest.
+
+The scripts supply tool paths automatically, including Ninja inside vcpkg compiler detection. Compiler tracking remains enabled. No shell activation or manual path setup is required.
+
+## Build presets
+
+Validation uses `windows-vcpkg` / `windows-release` / `windows-release-tests` on Windows and `linux-vcpkg-release` / `linux-release` / `linux-release-tests` on Linux. Windows uses Visual Studio 2022; Linux uses Ninja. `CMakePresets.json` also contains Debug presets. Keep preset changes aligned with `scripts/validate.py`.
 
 ## Dependencies and overlay ports
 
@@ -47,13 +39,6 @@ vcpkg add port <package-name>
 
 The package resolves from Microsoft vcpkg unless a same-named local port exists under `vcpkg-ports`.
 
-## Reproducible setup and validation
-
-```bash
-python scripts/bootstrap.py
-python scripts/validate.py
-```
-
-Requires Python 3.12+, Git and a platform C++17 toolchain (GCC/Clang on Linux; Visual Studio 2022 C++ tools on Windows). The scripts install pinned tools and the declared vcpkg baseline in `.dev-tools`, then use the canonical presets. No shell activation or manual Ninja path debugging is required. Linux forwards the installed Ninja path into vcpkg compiler detection; compiler tracking remains enabled.
+## Template updates
 
 Commit `.copier-answers.yml` and project changes before `copier update --vcs-ref <template-tag>`. Template Git tags version updates independently of your project's version.
