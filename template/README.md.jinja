@@ -11,7 +11,7 @@ python scripts/bootstrap.py
 python scripts/validate.py
 ```
 
-Requires Python 3.12+, Git and a platform C++17 toolchain (GCC/Clang on Linux; Visual Studio 2022 C++ tools and a Windows SDK on Windows). Linux also needs curl, zip, unzip and tar. Bootstrap installs pinned tools and the declared vcpkg baseline in `.dev-tools`. Validation configures, builds the static/shared libraries and example, and runs CTest.
+Requires Python 3.12+, Git and a platform C++17 toolchain (GCC/Clang on Linux; Visual Studio 2022 C++ tools and a Windows SDK on Windows). Linux also needs curl, zip, unzip and tar. Bootstrap installs pinned tools and the declared vcpkg baseline in `.dev-tools`. Validation configures, builds the static/shared libraries and example, runs CTest, and validates the installed C++ port with an independent consumer.
 
 The scripts supply tool paths automatically, including Ninja inside vcpkg compiler detection. Compiler tracking remains enabled. No shell activation or manual path setup is required.
 
@@ -38,6 +38,87 @@ vcpkg add port <package-name>
 ```
 
 The package resolves from Microsoft vcpkg unless a same-named local port exists under `vcpkg-ports`.
+
+## Installable C++ library
+
+The regular presets build the independent `{{ project_slug }}` static target and `{{ project_slug }}_shared` shared target, plus examples/tests. Public headers install under `include/{{ project_slug }}/`, compiled libraries under `lib/` (Windows DLLs under `bin/`), and CMake config/version/targets under `lib/cmake/{{ project_slug }}/`. Consumers use `find_package({{ project_slug }} CONFIG REQUIRED)` and `{{ project_slug }}::{{ project_slug }}`. The package version comes from the numeric `version` Copier answer; version compatibility is within the same major version. Public include paths distinguish the build tree from the install tree, and the target propagates C++{{ cpp_standard }}.
+
+The local port is `vcpkg-ports/{{ vcpkg_port_name }}`. Its `vcpkg.json` describes the library to install and depends only on vcpkg CMake helpers. The root `vcpkg.json` continues to describe development dependencies such as GoogleTest; it is not the port manifest. Keep the port inside this source checkout: it locates the library using `../..`, builds the current working tree, and installs no tests or examples. Future production dependencies must also be declared in the port and its exported config where appropriate.
+
+Normal CMake builds default `BUILD_STATIC_LIBRARY=ON` and `BUILD_SHARED_LIBRARY=ON`; a direct install exports `{{ project_slug }}::{{ project_slug }}` and `{{ project_slug }}::{{ project_slug }}_shared`. The port reads `VCPKG_LIBRARY_LINKAGE` and enables only the matching target. Static-only and shared-only ports both export `{{ project_slug }}::{{ project_slug }}`; there is no duplicate/conflicting second target in a port. `x64-linux` selects static, while `x64-windows` selects shared. Windows uses `WINDOWS_EXPORT_ALL_SYMBOLS` for the current function API. Future global data or some virtual-class interfaces require explicit DLL import/export annotations.
+
+To test packaging alone after bootstrap:
+
+```bash
+python scripts/validate_vcpkg.py
+```
+
+For a direct CMake install, configure with `BUILD_TESTING=OFF` and `BUILD_EXAMPLES=OFF`, build, then run `cmake --install <build-directory> --config Release --prefix <install-directory>`. The vcpkg recipe performs this for both Debug and Release and combines their imported targets.
+
+## Independent downstream consumer
+
+A C++ consumer needs CMake, vcpkg and the platform compiler. Python, Poetry and pybind11 are not consumer dependencies. Place the consumer beside the generated project, rather than inside its source/build tree. Create `consumer/vcpkg.json`:
+
+```json
+{ "dependencies": ["{{ vcpkg_port_name }}"] }
+```
+
+Create `consumer/vcpkg-configuration.json`, with the generated project's pinned baseline and a relative overlay path (replace `my-project` with this checkout's directory):
+
+```json
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "00807e89724847a866033a2f042c38fafae3c534",
+    "repository": "https://github.com/microsoft/vcpkg"
+  },
+  "overlay-ports": ["../my-project/vcpkg-ports"]
+}
+```
+
+Create `consumer/CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.25)
+project(consumer LANGUAGES CXX)
+find_package({{ project_slug }} CONFIG REQUIRED)
+add_executable(consumer main.cpp)
+target_link_libraries(consumer PRIVATE {{ project_slug }}::{{ project_slug }})
+```
+
+Create `consumer/main.cpp`:
+
+```cpp
+#include <{{ project_slug }}/example.h>
+#include <iostream>
+int main() {
+    const auto message = HelloWorld();
+    std::cout << message << std::endl;
+    return message == "Hello, World!" ? 0 : 1;
+}
+```
+
+Linux, from `consumer/`, with `$VCPKG_ROOT` pointing to a bootstrapped checkout:
+
+```bash
+"$VCPKG_ROOT/vcpkg" install --triplet x64-linux --binarysource=clear
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-linux -DVCPKG_INSTALLED_DIR="$PWD/vcpkg_installed" -DVCPKG_MANIFEST_INSTALL=OFF
+cmake --build build
+./build/consumer
+```
+
+Windows PowerShell, from `consumer/`, with `$env:VCPKG_ROOT` set:
+
+```powershell
+& "$env:VCPKG_ROOT/vcpkg.exe" install --triplet x64-windows --binarysource=clear
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows "-DVCPKG_INSTALLED_DIR=$PWD/vcpkg_installed" -DVCPKG_MANIFEST_INSTALL=OFF
+cmake --build build --config Release
+./build/Release/consumer.exe
+```
+
+For Windows Debug, use `--config Debug` and `./build/Debug/consumer.exe`. To select a static Windows library with dynamic CRT, replace `x64-windows` with `x64-windows-static-md` in both commands and use a new build/install directory. Linux shared linkage is also covered using an isolated overlay triplet that includes `x64-linux.cmake` and sets `VCPKG_LIBRARY_LINKAGE dynamic`.
+
+Local source changes do not change vcpkg's port recipe hash. Use a fresh consumer install directory, or remove the already installed port before reinstalling; keep `--binarysource=clear` to force compilation from the working tree. Moving this port away from its source checkout is unsupported. CI covers Linux x64 and Windows x64 with Visual Studio 2022; other platforms/toolchains and cross compilation are not validated.
 
 ## Template updates
 

@@ -1,12 +1,12 @@
 # Copier C++ vcpkg Library
 
-A pure C++17 library with independent static/shared targets, CMake, vcpkg and GoogleTest. This repository is migrated in place from Cookiecutter; its GitHub name stays the same.
+A pure C++17 library with independent static/shared targets, CMake, vcpkg and GoogleTest. This repository is migrated in place from Cookiecutter; it now uses the `copier-` repository name.
 
 ## Generate and update a project
 
 ```bash
 pip install copier==9.19.1
-copier copy gh:ScottChiuNYC/cookiecutter-cpp-vcpkg my-project
+copier copy gh:ScottChiuNYC/copier-cpp-vcpkg my-project
 cd my-project
 git init
 git add .
@@ -47,3 +47,13 @@ The validation script exercises default/custom Copier copy, real `v1.0.0` → `v
 Generated projects build automatically on push and pull request, with a manual workflow trigger also available. Their workflow is the ordinary file `template/.github/workflows/build-and-test.yml`, copied unchanged by Copier. Bootstrap and validation scripts are ordinary Python files under `scripts/`; `.jinja` is used only for project-specific substitution. Template validation checks both workflows' triggers, platform matrix and script entry points before executing the sample build/tests.
 
 No Docker, services, shell activation, personal vcpkg registry or custom infrastructure is needed. The first run downloads tools and compiles dependencies; later runs reuse local caches. Template acceptance on push allows Windows/Linux checks to finish before opening the migration PR.
+
+## Generated C++ packages
+
+Generated projects now install public headers, compiled libraries, and relocatable CMake config/version/target files. With default answers, the port is `my-project`, the CMake package is `my_project`, and the consumer target is `my_project::my_project`. `vcpkg_port_name` is a separate lowercase/hyphenated Copier answer; it does not rename the CMake API or the root dependency manifest. `version` supplies the CMake package version (numeric `major.minor.patch`).
+
+The generated README contains exact Linux/PowerShell commands for installing the local port and consuming it in an independent project. The port remains inside the generated source checkout; it builds that working tree, with no registry, upload, release workflow, Python tooling, or test dependency required by the C++ consumer. Run `python scripts/validate_vcpkg.py` after bootstrap to exercise just packaging; the normal generated validation invokes it automatically.
+
+Packaging acceptance installs into a fresh consumer manifest, disables binary caching for mutable local sources, relocates the installed prefix, hides source headers, checks imported include/library/config paths, and compiles/links/runs both Release and Debug consumers. It tests static and shared linkage on both platforms; regular preset builds still build both independent targets. Windows function exports use `WINDOWS_EXPORT_ALL_SYMBOLS`; global data or certain virtual-class interfaces need explicit DLL import/export annotations when introduced.
+
+The existing tagged `v1.0.0` → `v1.1.0` fixture remains. A separate fixture generates from the pre-packaging master commit, updates through isolated `v2.0.0` → `v2.1.0` tags, retains user source edits/files and existing answers, then runs the installed consumer. Acceptance checkouts include Git history for this fixture. No real downstream repository is updated.

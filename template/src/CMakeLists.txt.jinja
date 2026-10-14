@@ -1,13 +1,50 @@
 file(GLOB CORE_SOURCES CONFIGURE_DEPENDS *.cpp)
 
-add_library({{ project_slug }} STATIC ${CORE_SOURCES})
-target_include_directories(
-    {{ project_slug }}
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
-)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-add_library({{ project_slug }}_shared SHARED ${CORE_SOURCES})
-target_include_directories(
-    {{ project_slug }}_shared
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
+set(library_targets)
+if(BUILD_STATIC_LIBRARY)
+    add_library({{ project_slug }} STATIC ${CORE_SOURCES})
+    list(APPEND library_targets {{ project_slug }})
+endif()
+if(BUILD_SHARED_LIBRARY)
+    add_library({{ project_slug }}_shared SHARED ${CORE_SOURCES})
+    set_target_properties({{ project_slug }}_shared PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    list(APPEND library_targets {{ project_slug }}_shared)
+    # A shared-only port exports the same public target as a static-only port.
+    if(NOT BUILD_STATIC_LIBRARY)
+        set_target_properties({{ project_slug }}_shared PROPERTIES EXPORT_NAME {{ project_slug }})
+        add_library({{ project_slug }} ALIAS {{ project_slug }}_shared)
+    endif()
+endif()
+if(NOT library_targets)
+    message(FATAL_ERROR "Enable BUILD_STATIC_LIBRARY or BUILD_SHARED_LIBRARY.")
+endif()
+
+foreach(target IN LISTS library_targets)
+    target_include_directories(${target} PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_compile_features(${target} PUBLIC cxx_std_{{ cpp_standard }})
+endforeach()
+
+install(TARGETS ${library_targets} EXPORT {{ project_slug }}Targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+set(package_dir "${CMAKE_INSTALL_LIBDIR}/cmake/{{ project_slug }}")
+configure_package_config_file("${PROJECT_SOURCE_DIR}/cmake/LibraryConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/{{ project_slug }}Config.cmake"
+    INSTALL_DESTINATION "${package_dir}"
+)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/{{ project_slug }}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion
+)
+install(EXPORT {{ project_slug }}Targets NAMESPACE {{ project_slug }}:: DESTINATION "${package_dir}")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/{{ project_slug }}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/{{ project_slug }}ConfigVersion.cmake" DESTINATION "${package_dir}"
 )

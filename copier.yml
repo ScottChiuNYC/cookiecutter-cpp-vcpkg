@@ -12,6 +12,16 @@ project_slug:
 project_description:
   type: str
   default: "A vcpkg C++ library"
+version:
+  type: str
+  default: "0.1.0"
+  validator: >-
+    {% if not (version | regex_search("^(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){2}$")) %}Use a numeric CMake version (major.minor.patch without leading zeroes).{% endif %}
+vcpkg_port_name:
+  type: str
+  default: "{{ project_slug.replace('_', '-').strip('-') }}"
+  validator: >-
+    {% if not (vcpkg_port_name | regex_search("^[a-z0-9]+(-[a-z0-9]+)*$")) or vcpkg_port_name == 'gtest' or vcpkg_port_name.startswith('vcpkg-') %}Use a lowercase vcpkg name with hyphens; gtest and vcpkg-* are reserved.{% endif %}
 author_name:
   type: str
   default: "Your Name"
